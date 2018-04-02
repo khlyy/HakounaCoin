@@ -1,7 +1,8 @@
+import java.io.Serializable;
 import java.util.UUID;
 
-public class Transaction {
-	private UUID transactionId;
+public class Transaction implements Serializable {
+	public UUID transactionId;
 	private int amount;
 
     public Transaction() {
