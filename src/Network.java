@@ -16,12 +16,15 @@ public class Network {
 	private static ArrayList<User> users;
 	private static TreeMap<UUID, Integer> usersMap;
 	static final int N = 10;
+	static final int threshold = 3;
 	private static final int numberOfUsers = 10;
 
 	public static void propagate(User user, Announcement announcement) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException {
 		for (UUID peerId: user.getPeers()) {
-			User nextUser = users.get(usersMap.get(peerId));
-			nextUser.receiveAnnouncement(announcement);
+			if(Math.random() < 0.5){
+				User nextUser = users.get(usersMap.get(peerId));
+				nextUser.receiveAnnouncement(announcement);
+			}
 		}
 	}
 
@@ -34,12 +37,10 @@ public class Network {
 
 	private static void setPeers(int idx) {
 		ArrayList<UUID> peers = new ArrayList<>();
-		for (int i = 0; i < numberOfUsers; i++) {
-			if (i == idx) continue;
-			boolean add = (int) (Math.random() * 7) == 6;
-			if (add)
+		for (int i = 0; i < numberOfUsers; i++) 
+			if ((int) (Math.random() * threshold) == 0 && i != idx)
 				peers.add(users.get(i).getUserId());
-		}
+		
 		users.get(idx).setPeers(peers);
 	}
 
