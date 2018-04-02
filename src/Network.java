@@ -16,13 +16,15 @@ public class Network {
 	private static ArrayList<User> users;
 	private static TreeMap<UUID, Integer> usersMap;
 	static final int N = 10;
-	static final int threshold = 3;
+	static final double propagatingThreshold = 0.8;
+	static final double peeringThreshold = 0.3;
 	private static final int numberOfUsers = 10;
 
 	public static void propagate(User user, Announcement announcement) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException {
 		for (UUID peerId: user.getPeers()) {
-			if(Math.random() < 0.5){
+			if(Math.random() < propagatingThreshold){
 				User nextUser = users.get(usersMap.get(peerId));
+				System.out.println(user + " --> " + nextUser);
 				nextUser.receiveAnnouncement(announcement);
 			}
 		}
@@ -38,7 +40,7 @@ public class Network {
 	private static void setPeers(int idx) {
 		ArrayList<UUID> peers = new ArrayList<>();
 		for (int i = 0; i < numberOfUsers; i++) 
-			if ((int) (Math.random() * threshold) == 0 && i != idx)
+			if (Math.random() < peeringThreshold && i != idx)
 				peers.add(users.get(i).getUserId());
 		
 		users.get(idx).setPeers(peers);
@@ -66,10 +68,13 @@ public class Network {
 			printPeers(i);
 		}
 
-		users.get(0).makeTransaction();
+		System.out.println("------------------------------------------------------------------------------------------------");
 
+		users.get(0).makeTransaction();
+		System.out.println("------------------------------------------------------------------------------------------------");
 		for (User user: users)
 			System.out.println(user + ": " + user.getAnnouncements());
+
 	}
 
 	public static byte[] TransactionToByteArray(Transaction trans) throws IOException {
