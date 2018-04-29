@@ -1,7 +1,12 @@
 
 public class BlockAnnouncement extends Announcement {
+    public Block getBlock() {
+        return block;
+    }
 
-    public BlockAnnouncement(byte[] signature) {
-        super(signature);
+    private Block block;
+    public BlockAnnouncement(Block block) {
+
+        this.block = block;
     }
 }

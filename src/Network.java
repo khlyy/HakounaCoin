@@ -20,7 +20,7 @@ public class Network {
 	static final double peeringThreshold = 0.3;
 	private static final int numberOfUsers = 10;
 
-	public static void propagate(User user, Announcement announcement) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException {
+	public static void propagate(User user, Announcement announcement) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IOException {
 		for (UUID peerId: user.getPeers()) {
 			if(Math.random() < propagatingThreshold){
 				User nextUser = users.get(usersMap.get(peerId));
