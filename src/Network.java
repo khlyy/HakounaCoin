@@ -9,16 +9,17 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.TreeMap;
 import java.util.UUID;
 
 public class Network {
 	private static ArrayList<User> users;
 	private static TreeMap<UUID, Integer> usersMap;
-	static final int N = 10;
-	static final double propagatingThreshold = 0.8;
-	static final double peeringThreshold = 0.3;
-	private static final int numberOfUsers = 10;
+	static final int N = 2;
+	static final double propagatingThreshold = 1;
+	static final double peeringThreshold = 1;
+	private static final int numberOfUsers = 2;
 
 	public static void propagate(User user, Announcement announcement) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IOException {
 		for (UUID peerId: user.getPeers()) {
@@ -30,7 +31,7 @@ public class Network {
 		}
 	}
 
-	private static void addUser(String username, int idx) throws NoSuchAlgorithmException { // create user in the network
+	private static void addUser(String username, int idx) throws NoSuchAlgorithmException, IOException { // create user in the network
 		User newUser = new User(username);
 		users.add(newUser);
 		usersMap.put(newUser.getUserId(), idx);
@@ -68,12 +69,23 @@ public class Network {
 			printPeers(i);
 		}
 
-		System.out.println("------------------------------------------------------------------------------------------------");
+		Transaction transaction1 = new Transaction();
+		Transaction transaction2 = new Transaction();
+		List<Transaction> transactions = new ArrayList<>();
+		transactions.add(transaction1); transactions.add(transaction2);
+		users.get(0).setTransactions(transactions);
+		Block b0 = users.get(0).getBlockChain().get(0);
+		Block b1 = new Block(transactions, b0.getBlockHash());
+		users.get(0).blockHash(b1);
+		users.get(0).getBlockChain().add(b1);
+		users.get(0).receiveBlock(b1);
 
-		users.get(0).makeTransaction();
 		System.out.println("------------------------------------------------------------------------------------------------");
-		for (User user: users)
-			System.out.println(user + ": " + user.getAnnouncements());
+//		for (int i = 0; i < 2; i++)
+//			users.get(0).makeTransaction();
+//		System.out.println("------------------------------------------------------------------------------------------------");
+//		for (User user: users)
+//			System.out.println(user + ": " + user.getAnnouncements());
 
 	}
 

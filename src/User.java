@@ -18,11 +18,9 @@ public class User {
     private TreeSet<Announcement> announcementSet;
     private List<Block> blockChain;
     private List<List<Block>> cache;
-
-
     private int transactionsCount;
 
-    public User(String username) throws NoSuchAlgorithmException {
+    public User(String username) throws NoSuchAlgorithmException, IOException {
         this.userId = UUID.randomUUID();
         this.username = username;
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
@@ -31,13 +29,17 @@ public class User {
         this.publicKey = keyPair.getPublic();
         transactions = new ArrayList<>();
         announcements = new ArrayList<>();
+        blockChain = new ArrayList<>();
+        Block b0 = new Block("0", transactions, null);
+        blockHash(b0);
+        blockChain.add(b0);
         cache = new ArrayList<>();
         announcementSet = new TreeSet<>();
         transactionsCount = 0;
     }
 
 
-    public byte[] blockToByteArray(Block block) throws IOException {
+    public static byte[] blockToByteArray(Block block) throws IOException {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         ObjectOutputStream out = new ObjectOutputStream(bos);
         out.writeObject(block);
@@ -47,24 +49,19 @@ public class User {
 
     public String blockHash(Block block) throws NoSuchAlgorithmException, IOException {
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
-        byte[] hash = digest.digest(blockToByteArray(block));
-        return Base64.getEncoder().encodeToString(hash);
+        byte[] byteHash = digest.digest(blockToByteArray(block));
+        String stringHash = Base64.getEncoder().encodeToString(byteHash);
+        block.setBlockHash(stringHash);
+        return stringHash;
     }
-
-    public static Transaction byteArrayToTransaction(byte[] byteArray) throws IOException, ClassNotFoundException {
-        ByteArrayInputStream bis = new ByteArrayInputStream(byteArray);
-        ObjectInputStream in = new ObjectInputStream(bis);
-        return (Transaction) in.readObject();
-    }
-
 
     public Block blockMining() throws IOException, NoSuchAlgorithmException {
-        List<Transaction> blockTransactions = transactions;
         for (int i = 0; i < 1e8; i++) {
-            Block block = new Block(blockTransactions, blockChain.get(blockChain.size() - 1).getBlockHash());
+            Block block = new Block(transactions, blockChain.get(blockChain.size() - 1).getBlockHash());
             String hash = blockHash(block);
             if (hash.substring(0, 2).equals("00")) {
-                block.setBlockHash(hash);
+                System.err.println("User " + username + " Solved the puzzle and created the block");
+                System.err.println(hash);
                 return block;
             }
         }
@@ -73,32 +70,38 @@ public class User {
 
     public void removeIntersection(Block block) {
         List<Transaction> blockTransaction = block.getTransactions();
-        for (Transaction transaction : blockTransaction)
+        List<Transaction> intersection = new ArrayList(blockTransaction);
+        intersection.retainAll(transactions);
+        for (Transaction transaction : intersection)
             transactions.remove(transaction);
     }
 
     public boolean insertInBlockChain(List<Block> blocks, Block block) {
-        if (blocks.get(blocks.size() - 1).getBlockHash().equals(block.getBlockHash())) {
+        if (blocks.get(blocks.size() - 1).getBlockHash().equals(block.getPreviousHash())) {
             blocks.add(block);
             if (blocks == blockChain)
                 removeIntersection(block);
             return true;
         }
-
-        for (int i = blocks.size() - 2; i > blocks.size() - 4; i--)
-            if (blocks.get(i).getBlockHash().equals(block.getBlockHash())) {
+        System.err.println("Failed to add b1_ to the block chain");
+        for (int i = blocks.size() - 2; i > Math.max(-1, blocks.size() - 4); i--)
+            if (blocks.get(i).getBlockHash().equals(block.getPreviousHash())) {
                 List newChain = new ArrayList(blocks.subList(0, i + 1));
                 newChain.add(block);
                 cache.add(newChain);
+                System.err.println("New chain added to the cache");
                 return true;
             }
 
         return false;
     }
 
-    private void receiveBlock(Block block) {
+    public void receiveBlock(Block block) {
         boolean inserted = insertInBlockChain(blockChain, block);
-        if (inserted) return;
+        if (inserted) {
+            System.err.println("new block was added to " + username + "'s block chain");
+            return;
+        }
         List deleteCachedChains = new ArrayList();
         for (List cachedChain : cache) {
             if (cachedChain.size() + 3 <= blockChain.size()) {
@@ -124,9 +127,12 @@ public class User {
 
     public void makeBlock() throws IOException, NoSuchAlgorithmException, InvalidKeyException, NoSuchPaddingException {
         Block block = blockMining();
-        sendAnnouncement(new BlockAnnouncement(block));
+        receiveBlock(block);
+        Announcement blockAnnouncement = new BlockAnnouncement(block);
+        announcementSet.add(blockAnnouncement);
         transactions.clear();
         transactionsCount = 0;
+        sendAnnouncement(blockAnnouncement);
     }
 
     public void makeTransaction() throws NoSuchPaddingException, NoSuchAlgorithmException, IOException, BadPaddingException, IllegalBlockSizeException, InvalidKeyException {
@@ -134,8 +140,10 @@ public class User {
         transactions.add(newTransaction);
         transactionsCount++;
         Announcement newAnnouncement = signTransaction(newTransaction);
+        announcementSet.add(newAnnouncement);
         sendAnnouncement(newAnnouncement);
         if (transactionsCount == Network.N) {
+            System.err.println("Reached N Transactions");
             makeBlock();
         }
     }
@@ -158,8 +166,10 @@ public class User {
         if (!announcementSet.add(announcement))
             return;
 
-        if (announcement instanceof BlockAnnouncement)
+        if (announcement instanceof BlockAnnouncement) {
+            System.err.println("User " + username + " Received block");
             receiveBlock(((BlockAnnouncement) announcement).getBlock());
+        }
         else {
             transactionsCount++;
             if (transactionsCount == Network.N)
@@ -185,6 +195,10 @@ public class User {
         return userId;
     }
 
+    public void setTransactions(List<Transaction> transactions) {
+        this.transactions = transactions;
+    }
+
     public PublicKey getPublicKey() {
         return publicKey;
     }
@@ -195,5 +209,9 @@ public class User {
 
     public ArrayList<Announcement> getAnnouncements() {
         return announcements;
+    }
+
+    public List<Block> getBlockChain() {
+        return blockChain;
     }
 }
